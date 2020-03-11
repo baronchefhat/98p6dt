@@ -6,11 +6,11 @@
   way easier. In a scalable and distributed environment I would absolutely use
   a hosted datastore. But this also lets me write all the same queries that I
   would likely use in that situation, too.
- 
+
  - On a related note, I'm using the SQLite in-memory option for DB creation.
   The upside to this is that I don't have to deal with file permissions/io.
-  The downside is that it will erase itself every time the service is 
-  restarted. In a production environment, this would all be on a hosted 
+  The downside is that it will erase itself every time the service is
+  restarted. In a production environment, this would all be on a hosted
   datastore and wouldn't be a problem.
 
   - external guids vs game id
@@ -24,6 +24,16 @@
 
   - content type raw/json
 
+  - with more time would do better filtering/indexing of moves
+
+  - with more time would write test suite
+
+  - why error code 202 for response of quit game?
+
+  - fix post move response
+
+  - with more time/different db would use transactions
+
 
 ## Future enhancements:
 
@@ -34,3 +44,4 @@
  - AI to play the game singleplayer
  - Admin endpoints to manage users and games
  - More than two players
+ - Standardize output a little more

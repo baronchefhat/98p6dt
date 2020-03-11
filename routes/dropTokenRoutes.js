@@ -25,16 +25,18 @@ module.exports = {
       action: DropTokenActions.getGameById,
       urlParams: {
         gameId: { required: true, type: 'nonEmptyString' }
-      } 
+      }
     },
 
     getMoveset: {
       routePath: ':gameId/moves',
       action: DropTokenActions.getMoveset,
       urlParams: {
-        gameId: { required: true, type: 'nonEmptyString' },
-        start: { type: 'int' },
-        until: { type: 'int' }
+        gameId: { required: true, type: 'nonEmptyString' }
+      },
+      queryParams: {
+        start: { type: 'id' },
+        until: { type: 'id' }
       }
     },
 
@@ -48,6 +50,25 @@ module.exports = {
       },
       postParams: {
         column: { required: true, type: 'int' }
+      }
+    },
+
+    getMove: {
+      routePath: ':gameId/moves/:moveNum',
+      action: DropTokenActions.getMove,
+      urlParams: {
+        gameId: { required: true, type: 'nonEmptyString' },
+        moveNum: { required: true, type: 'nonEmptyString' }
+      }
+    },
+
+    quit: {
+      routePath: ':gameId/:playerId',
+      method: 'DELETE',
+      action: DropTokenActions.quit,
+      urlParams: {
+        gameId: { required: true, type: 'nonEmptyString' },
+        playerId: { required: true, type: 'nonEmptyString' }
       }
     }
   }

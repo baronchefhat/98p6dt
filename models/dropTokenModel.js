@@ -6,7 +6,7 @@ module.exports = class DropTokenModel extends DbModel {
   static getAllInProgressGameIDs(conn, data, cb) {
     let queryObj = {
       text: `
-        SELECT g.game_id 
+        SELECT g.game_id
         FROM games AS g
         JOIN states AS s ON (s.state_id = g.state_id)
         WHERE s.description = 'IN_PROGRESS'
@@ -21,7 +21,7 @@ module.exports = class DropTokenModel extends DbModel {
       text: `
         SELECT *
         FROM players
-        WHERE name = ? 
+        WHERE name = ?
         OR name = ?
       ;`,
       values: [data.players[0], data.players[1]]
@@ -94,5 +94,110 @@ module.exports = class DropTokenModel extends DbModel {
       values: [data.gameId]
     };
     DbModel.getAll(conn, queryObj, cb);
+  }
+
+  static recordMove(conn, data, cb) {
+    let queryObj = {
+      text: `INSERT INTO moves(
+        'game_id',
+        'player_id',
+        'column',
+        'type_id'
+      ) VALUES (?,?,?,(
+        SELECT type_id FROM move_types WHERE description = 'MOVE'
+      ));`,
+      values: [
+        data.gameId,
+        data.playerId,
+        data.column
+      ]
+    };
+    DbModel.insert(conn, queryObj, cb);
+  }
+
+  static quitMove(conn, data, cb) {
+    let queryObj = {
+      text: `INSERT INTO moves(
+        'game_id',
+        'player_id',
+        'type_id'
+      ) VALUES (?,?,(
+        SELECT type_id FROM move_types WHERE description = 'QUIT'
+      ));`,
+      values: [
+        data.gameId,
+        data.playerId
+      ]
+    };
+    DbModel.insert(conn, queryObj, cb);
+  }
+
+  static endGame(conn, data, cb) {
+    let board;
+    try {
+      board = JSON.stringify(data.board)
+    } catch(err) {
+      return cb(new Error('Could not convert board data to JSON'));
+    }
+    let queryObj = {
+      text: `UPDATE games SET
+          board = ?,
+          turn_player_id = ?,
+          winner_player_id = ?,
+          state_id = (
+            SELECT state_id FROM states WHERE description = 'DONE'
+          )
+        WHERE game_id = ?;`,
+      values: [
+        board,
+        data.turnPlayerId,
+        data.winnerId,
+        data.gameId
+      ]
+    };
+    DbModel.update(conn, queryObj, cb);
+  }
+
+  static forfeit(conn, data, cb) {
+    let board;
+    try {
+      board = JSON.stringify(data.board)
+    } catch(err) {
+      return cb(new Error('Could not convert board data to JSON'));
+    }
+    let queryObj = {
+      text: `UPDATE games SET
+          winner_player_id = ?,
+          state_id = (
+            SELECT state_id FROM states WHERE description = 'DONE'
+          )
+        WHERE game_id = ?;`,
+      values: [
+        data.winnerId,
+        data.gameId
+      ]
+    };
+    DbModel.update(conn, queryObj, cb);
+  }
+
+  static endTurn(conn, data, cb) {
+    let board;
+    try {
+      board = JSON.stringify(data.board)
+    } catch(err) {
+      return cb(new Error('Could not convert board data to JSON'));
+    }
+    let queryObj = {
+      text: `UPDATE games SET
+          board = ?,
+          turn_player_id = ?
+        WHERE game_id = ?;`,
+      values: [
+        board,
+        data.turnPlayerId,
+        data.gameId
+      ]
+    };
+    DbModel.update(conn, queryObj, cb);
   }
 };

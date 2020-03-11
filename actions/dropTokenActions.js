@@ -35,14 +35,14 @@ module.exports = class DropTokenActions {
         }
       },
       existingPlayers: [
-        'suppliedDimensions', 
-        'suppliedPlayers', 
+        'suppliedDimensions',
+        'suppliedPlayers',
         (results, callback) => {
           return DropTokenModel.getAllPlayersByNames(conn, {players: payload.players}, callback)
         }
       ],
       playerObjects: [
-        'existingPlayers', 
+        'existingPlayers',
         (results, callback) => {
           let existingPlayerNames = _.map(results.existingPlayers, 'name');
           async.each(payload.players, (playerName, playerCb) => {
@@ -82,7 +82,7 @@ module.exports = class DropTokenActions {
           async.waterfall([
             (newGameCallback) => {
               DropTokenModel.newGame(conn, {
-                board, 
+                board,
                 playerTurnId: dbPlayers[0].player_id
               }, newGameCallback);
             },
@@ -127,10 +127,43 @@ module.exports = class DropTokenActions {
     });
   }
 
-  static getMoveset(conn, payload, cb) {
-    // TODO: implement start/until
+  static getMove(conn, payload, cb) {
     DropTokenModel.getAllMovesForGame(conn, {gameId: payload.gameId}, (err, results) => {
       if (err) return cb(err);
+      if (_.isEmpty(results)) {
+        let emptyErr = new Error('Game not found');
+        emptyErr.statusCode = 404;
+        return cb(emptyErr);
+      }
+      let selectedMove = results[payload.moveNum];
+      if (!selectedMove) {
+        let emptyErr = new Error('Move not found');
+        emptyErr.statusCode = 404;
+        return cb(emptyErr);
+      }
+      let type = selectedMove.description;
+      let retObj = {
+        type,
+        player: selectedMove.name
+      };
+      if (type != 'QUIT') {
+        retObj.column = selectedMove.column;
+      }
+      return cb(null, retObj);
+    });
+  }
+
+  static getMoveset(conn, payload, cb) {
+    DropTokenModel.getAllMovesForGame(conn, {gameId: payload.gameId}, (err, results) => {
+      if (err) return cb(err);
+
+      if (_.has(payload, 'until')) {
+        results = results.slice(0, parseInt(payload.until) + 1);
+      }
+      if (_.has(payload, 'start')) {
+        results = results.slice(payload.start);
+      }
+
       let retMoves = _.map(results, (row) => {
         let type = row.description;
         let retObj = {
@@ -157,7 +190,7 @@ module.exports = class DropTokenActions {
             emptyErr.statusCode = 404;
             return callback(emptyErr);
           }
-          
+
           if (results[0].description == 'DONE') {
             let emptyErr = new Error('Game has already ended');
             emptyErr.statusCode = 404;
@@ -227,9 +260,7 @@ module.exports = class DropTokenActions {
           let board = gameData[0].board;
           let selectedColumn = board[payload.column];
 
-          // TODO: More robust assignment if more than two players
-          let playerId = gameData[0].player_id;
-          if (gameData[1].name == payload.playerId) playerId = gameData[1].player_id;
+          let playerId = DropTokenActions.getInternalPlayerId(gameData, payload.playerId);
 
           let selectedX = payload.column;
           let selectedY = 0;
@@ -289,14 +320,119 @@ module.exports = class DropTokenActions {
           return callback(null, retObj);
         }
       ],
-      recordChanges: [
+      recordMove: [
         'gameData',
         'newBoard',
         (results, callback) => {
-          okay write this part now
+          let playerId = DropTokenActions.getInternalPlayerId(results.gameData, payload.playerId);
+          DropTokenModel.recordMove(conn, {
+            gameId: payload.gameId,
+            playerId,
+            column: payload.column
+          }, callback);
+        }
+      ],
+      updateGame: [
+        'gameData',
+        'newBoard',
+        (results, callback) => {
+          let gameData = results.gameData;
+          let gameId = gameData[0].game_id;
+          let otherPlayerId = gameData[0].player_id;
+          if (gameData[0].name == payload.playerId) otherPlayerId = gameData[1].player_id;
+
+          let winnerId = _.get(results, 'newBoard.winnerId');
+          if (winnerId) {
+            DropTokenModel.endGame(conn, {
+              board: results.newBoard.newBoard,
+              turnPlayerId: otherPlayerId,
+              winnerId,
+              gameId
+            }, callback);
+          } else {
+            DropTokenModel.endTurn(conn, {
+              board: results.newBoard.newBoard,
+              turnPlayerId: otherPlayerId,
+              gameId
+            }, callback);
+          }
         }
       ]
     }, (err, results) => {
+      let gameId = payload.gameId;
+      let moveNumber = results.recordMove - 1;
+      let moveStr = `${gameId}/moves/${moveNumber}`;
+      return cb(err, {move: moveStr});
+    });
+  }
+
+  static getInternalPlayerId(gameData, playerName) {
+    // TODO: More robust assignment if more than two players
+    let playerId = gameData[0].player_id;
+    if (gameData[1].name == playerName) playerId = gameData[1].player_id;
+    return playerId;
+  }
+
+  static quit(conn, payload, cb) {
+    async.auto({
+      checkGame: (callback) => {
+        DropTokenModel.getGameById(conn, {gameId: payload.gameId}, (err, results) => {
+          if (err) return callback(err);
+
+          if (_.isEmpty(results)) {
+            let emptyErr = new Error('Game not found');
+            emptyErr.statusCode = 404;
+            return callback(emptyErr);
+          }
+
+          if (results[0].description == 'DONE') {
+            let emptyErr = new Error('Game has already ended');
+            emptyErr.statusCode = 410;
+            return callback(emptyErr);
+          }
+
+          let playerInGame = false;
+          _.forEach(results, (row) => {
+            if (row.name == payload.playerId) playerInGame = true;
+          });
+
+          if (!playerInGame) {
+            let err = new Error('Player is not playing in that game');
+            err.statusCode = 404;
+            return callback(err);
+          }
+
+          return callback(null, results);
+        });
+      },
+      endMove: [
+        'checkGame',
+        (results, callback) => {
+          let gameData = results.checkGame;
+          let playerId = DropTokenActions.getInternalPlayerId(gameData, payload.playerId);
+          DropTokenModel.quitMove(conn, {
+            gameId: payload.gameId,
+            playerId
+          }, callback);
+        }
+      ],
+      endGame: [
+        'checkGame',
+        'endMove',
+        (results, callback) => {
+          let gameData = results.checkGame;
+          let gameId = payload.gameId;
+          let otherPlayerId = gameData[0].player_id;
+          if (gameData[0].name == payload.playerId) otherPlayerId = gameData[1].player_id;
+
+          DropTokenModel.forfeit(conn, {
+            winnerId: otherPlayerId,
+            gameId
+          }, callback);
+        }
+      ]
+    }, (err, results) => {
+      results.statusCode = 202;
       return cb(err, results);
     });
   }

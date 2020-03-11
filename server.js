@@ -19,7 +19,7 @@ app.set('port', config.port);
 // Use express's json features
 app.use(express.json());
 
-// Initialize the DB 
+// Initialize the DB
 // TODO: Remove this step in a production env
 // TODO: Support psql option instead
 // NOTE: THIS STEP WOULD NOT BE PERFORMED ON A HOSTED DATABASE
@@ -36,7 +36,7 @@ app.use((err, req, res, next) => {
   // All other exceptions can be displayed normally
   if (err instanceof SyntaxError) {
     let msg = 'Malformed JSON provided';
-    // Response utility has static functions for constructing the responses as 
+    // Response utility has static functions for constructing the responses as
     // objects but then res.json turns those objects into a json response
     res.status(400);
     return res.json(ResponseUtility.error(new Error(msg)));
@@ -92,32 +92,36 @@ let validateInput = (routeData, req, cb) => {
   async.parallel({
     urlData: (callback) => {
       let urlParams = _.get(routeData, 'urlParams');
-      performParamValidation(urlParams, req.params, callback); 
+      performParamValidation(urlParams, req.params, callback);
     },
     postData: (callback) => {
       let postParams = _.get(routeData, 'postParams');
-      performParamValidation(postParams, req.body, callback); 
+      performParamValidation(postParams, req.body, callback);
+    },
+    queryData: (callback) => {
+      let queryParams = _.get(routeData, 'queryParams');
+      performParamValidation(queryParams, req.query, callback);
     }
-  }, (err, {urlData, postData}) => {
+  }, (err, {urlData, postData, queryData}) => {
     if (err) return cb(err);
-    let results = _.assign(urlData, postData);
+    let results = _.assign(urlData, postData, queryData);
     return cb(null, results);
   });
 };
 
 let assignRoute = (req, res, routeData) => {
   async.auto({
-    
-    conn: (cb) => { 
+
+    conn: (cb) => {
       // Removed only because we're using in-memory SQLite
       // TODO: support psql
-      //dbModel.getDbConn(cb); 
+      //dbModel.getDbConn(cb);
       cb(null, sqliteConn);
     },
-    
+
     params: (cb) => { validateInput(routeData, req, cb); },
     actionResponse: [
-      'conn', 
+      'conn',
       'params',
       ({conn, params}, cb) => { routeData.action(conn, params, cb); }
     ],
@@ -133,6 +137,10 @@ let assignRoute = (req, res, routeData) => {
       }
       res.json(ResponseUtility.error(err));
     } else {
+      if (_.has(actionResponse, 'statusCode')) {
+        res.status(actionResponse.statusCode);
+        actionResponse = _.omit(actionResponse, 'statusCode');
+      }
       res.json(ResponseUtility.success(actionResponse));
     }
   });

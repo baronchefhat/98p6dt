@@ -14,7 +14,7 @@ module.exports = class DbModel {
     let conn = new sqlite.Database(':memory:');
     async.series([
 
-      (callback) => { conn.run(`DROP TABLE IF EXISTS games;`, [], callback); }, 
+      (callback) => { conn.run(`DROP TABLE IF EXISTS games;`, [], callback); },
 
       (callback) => { conn.run(`CREATE TABLE games (
         game_id INTEGER PRIMARY KEY,
@@ -52,8 +52,7 @@ module.exports = class DbModel {
         game_id INTEGER NOT NULL,
         player_id INTEGER NOT NULL,
         type_id INTEGER NOT NULL,
-        move_number INTEGER NOT NULL,
-        column INTEGER NOT NULL
+        column INTEGER
       );`, [], callback); },
 
       (callback) => { conn.run(`DROP TABLE IF EXISTS move_types;`, [], callback); },
@@ -90,11 +89,18 @@ module.exports = class DbModel {
     });
   }
 
+  static update(conn, queryObj, cb) {
+    let params = _.get(queryObj, 'values', []);
+    conn.run(queryObj.text, params, function(err) {
+      return cb(err, this.changes);
+    });
+  }
+
   static closeConn(conn, cb) {
     // Removed only because we're using in-memory SQLite
     // TODO: support psql
     // conn.close(cb);
     return cb();
   }
-  
+
 };
