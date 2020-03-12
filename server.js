@@ -132,6 +132,7 @@ let assignRoute = (req, res, routeData) => {
     ]
   }, (err, { actionResponse }) => {
     if (err) {
+      res.status(500);
       if (_.has(err, 'statusCode')) {
         res.status(err.statusCode);
       }
@@ -165,4 +166,5 @@ app.use(function (req, res, next) {
 
 app.listen(app.get('port'), () => {
   console.log(`Server listening on port ${app.get('port')}`);
+  console.log(`Server ready to accept requests`);
 });

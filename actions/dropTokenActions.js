@@ -193,7 +193,7 @@ module.exports = class DropTokenActions {
 
           if (results[0].description == 'DONE') {
             let emptyErr = new Error('Game has already ended');
-            emptyErr.statusCode = 404;
+            emptyErr.statusCode = 409;
             return callback(emptyErr);
           }
 
@@ -357,11 +357,20 @@ module.exports = class DropTokenActions {
             }, callback);
           }
         }
+      ],
+      moveNumber: [
+        'updateGame',
+        (results, callback) => {
+          DropTokenModel.getAllMovesForGame(conn, {gameId: payload.gameId}, (err, results) => {
+            if (err) return callback(err);
+            let moveNumber = results.length - 1;
+            return callback(err, moveNumber);
+          });
+        }
       ]
     }, (err, results) => {
       let gameId = payload.gameId;
-      let moveNumber = results.recordMove - 1;
-      let moveStr = `${gameId}/moves/${moveNumber}`;
+      let moveStr = `${gameId}/moves/${results.moveNumber}`;
       return cb(err, {move: moveStr});
     });
   }
@@ -433,7 +442,7 @@ module.exports = class DropTokenActions {
       ]
     }, (err, results) => {
       results.statusCode = 202;
-      return cb(err, results);
+      return cb(err, {});
     });
   }
 };

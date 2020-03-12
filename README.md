@@ -1,5 +1,17 @@
 # 98point6 Drop Token Service
 
+## Prerequisites:
+ - NodeJS (https://nodejs.org)
+
+## Installation instructions:
+ 1. Download/Clone this repo to somewhere on your hard drive
+ 2. Navigate to the code's base directory (the location of this repo's package.json)
+ 3. Run `npm install` to automatically install all of the service's dependencies
+ 4. Run `node server.js` to start up the service
+ 5. You can now make requests at `localhost:{port}/drop_token/...`
+
+ NOTE: By default the service runs on port 3020, but this can be modified by changing the value inside `config.json`
+
 ## Implementation notes:
 
  - I used SQLite as the DB for the service because it makes installation/setup
@@ -8,40 +20,7 @@
   would likely use in that situation, too.
 
  - On a related note, I'm using the SQLite in-memory option for DB creation.
-  The upside to this is that I don't have to deal with file permissions/io.
+  The upside to this is that we don't have to deal with file permissions/io.
   The downside is that it will erase itself every time the service is
   restarted. In a production environment, this would all be on a hosted
   datastore and wouldn't be a problem.
-
-  - external guids vs game id
-
-  - since using in memory db, have to pass connection object around and leave it open
-  - why node
-
-  - index the tables
-
-  - vague error response on missing url params
-
-  - content type raw/json
-
-  - with more time would do better filtering/indexing of moves
-
-  - with more time would write test suite
-
-  - why error code 202 for response of quit game?
-
-  - fix post move response
-
-  - with more time/different db would use transactions
-
-
-## Future enhancements:
-
- - Ability to print some kind of display (even if its primitive)
- - Ability to create player accounts, with all the auth that goes with them
- - Ability to add a custom-sized game board of any number of rows and columns
- - Ability to customize rules, for example, requiring 3 or 5 in a row to win
- - AI to play the game singleplayer
- - Admin endpoints to manage users and games
- - More than two players
- - Standardize output a little more
