@@ -16,7 +16,7 @@
   "dependencies": {
     "async": "^2.6.1",
     "express": "^4.16.4",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.19",
     "sqlite3": "^4.1.1"
   }
 }
