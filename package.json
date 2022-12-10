@@ -15,7 +15,7 @@
   "homepage": "https://github.com/baronchefhat/98p6dt#readme",
   "dependencies": {
     "async": "^2.6.1",
-    "express": "^4.16.4",
+    "express": "^4.18.2",
     "lodash": "^4.17.11",
     "sqlite3": "^4.1.1"
   }
